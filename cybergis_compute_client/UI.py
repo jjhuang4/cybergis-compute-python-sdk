@@ -7,6 +7,7 @@ from .MarkdownTable import MarkdownTable  # noqa
 import requests
 import datetime
 import geopandas as gpd
+import webbrowser
 
 
 class UI:
@@ -587,14 +588,14 @@ class UI:
         """
         Helper function to search directory and all subdirectories recursively
         """
-        def search_dir(dir, data):
+        def search_dir(dir, data, file_ext_list):
             for entry in os.listdir(dir):  # check subdirectories
                 path = os.path.join(dir, entry)
                 if os.path.isdir(path):
-                    data = search_dir(path, data)
+                    data = search_dir(path, data, file_ext_list)
                 elif os.path.isfile(path):
                     file_name, file_ext = os.path.splitext(path)
-                    if file_ext.lower() not in ['.csv', '.shp', '.geojson']:
+                    if file_ext.lower() not in file_ext_list:
                         continue
                     else:
                         # check for recency (file was created in last 30 minutes)
@@ -609,11 +610,22 @@ class UI:
             data_files = []
             print(f"Searching for data files in: {d}")
             # get all files that can be viewed and operated on as dataframes
-            data_files = search_dir(d, data_files)
+            data_files = search_dir(d, data_files, ['.csv', '.shp', '.geojson'])
             if not data_files:
                 display(Markdown(' No recently created compatible filetypes to view'))
             return data_files
-        return search_files(self.scripts['script_destination'])
+        """
+        Helper function to search for output html files
+        """
+        def search_html(d=os.getcwd()):
+            html_files = []
+            print(f"Searching for html files in: {d}")
+            html_files = search_dir(d, html_files, ['.html'])
+            if not html_files:
+                display(Markdown(' No recently created html files to view'))
+            return html_files
+        dest = self.scripts['script_destination']
+        return search_files(dest), search_html(dest)
 
     def renderScripts(self):
         if self.scripts['output'] is None:
@@ -644,17 +656,26 @@ class UI:
                     self.scripts['button'].on_click(self.onScriptRunButtonClick())
                     display(self.scripts['button'])
                 if self.script_executed:  # if post job script was recently executed:
-                    script_output_files = self.search()
-                    if script_output_files is None:
+                    script_output_files, html_files = self.search()
+                    if script_output_files is None and html_files is None:
                         print("No files downloaded from script execution")
                         return
-                    self.scripts['dropdown'] = widgets.Dropdown(
-                        options=script_output_files, value=script_output_files[0],
-                        description='Select data file to display')
-                    display(self.scripts['dropdown'])
-                    self.scripts['visual_button'] = widgets.Button(description="Visualize geospatial file")
-                    self.scripts['visual_button'].on_click(self.onVisualizeButtonClick())
-                    display(self.scripts['visual_button'])
+                    if html_files is not None:
+                        self.scripts['html_dropdown'] = widgets.Dropdown(
+                            options=html_files, value=html_files[0],
+                            description='Select html file to open')
+                        display(self.scripts['html_dropdown'])
+                        self.scripts['html_button'] = widgets.Button(description="Display html in web browser")
+                        self.scripts['html_button'].on_click(self.onHtmlButtonClick())
+                        display(self.scripts['html_button'])
+                    if script_output_files is not None:
+                        self.scripts['script_dropdown'] = widgets.Dropdown(
+                            options=script_output_files, value=script_output_files[0],
+                            description='Select data file to display')
+                        display(self.scripts['script_dropdown'])
+                        self.scripts['visual_button'] = widgets.Button(description="Visualize geospatial file")
+                        self.scripts['visual_button'].on_click(self.onVisualizeButtonClick())
+                        display(self.scripts['visual_button'])
 
     def onScriptRunButtonClick(self):
         """
@@ -732,13 +753,26 @@ class UI:
         def on_click(change):
             with self.scripts['output']:
                 self.rerender(['scripts'])
-                geo_filepath = self.scripts['dropdown'].value
+                geo_filepath = self.scripts['script_dropdown'].value
                 display(Markdown("Processing file..."))
                 print("Converting to geodataframe")
                 gdf = to_geofile(geo_filepath)
                 print("Showing map display")
                 iframe = geo_vis(gdf)
                 display(iframe)
+        return on_click
+    
+    def onHtmlButtonClick(self):
+        def on_click(change):
+            with self.scripts['output']:
+                self.rerender(['scripts'])
+                html_path = self.scripts['html_dropdown'].value
+                if os.name == 'nt': # Windows
+                    file_path = 'file:///' + os.path.abspath(html_path)
+                else: # MacOS or Linux
+                    file_path = 'file://' + os.path.abspath(html_path)
+                # Open file in the default web browser
+                webbrowser.open_new_tab(file_path)
         return on_click
 
     def renderFolders(self):
