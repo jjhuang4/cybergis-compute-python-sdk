@@ -2,7 +2,7 @@ import os
 import math
 import ipywidgets as widgets
 from ipyfilechooser import FileChooser
-from IPython.display import Markdown, display, clear_output
+from IPython.display import Markdown, display, clear_output, HTML
 from .MarkdownTable import MarkdownTable  # noqa
 import requests
 import datetime
@@ -803,14 +803,10 @@ class UI:
             with self.visuals['output']:
                 self.rerender(['visuals'])
                 html_path = self.html_path
-                with open(html_path, 'r') as f:
-                    map_html = f.read()
-                iframe = widgets.HTML(
-                    value=map_html,
-                    placeholder='Loading map...',
-                    description='Map:',
-                )
-                display(iframe)
+                html_link_path = os.path.relpath(html_path)
+                html_link_path = html_link_path[1:] if html_link_path[0] == "/" else html_link_path
+                print(html_link_path)
+                display(Markdown(f"[Click me]({html_link_path})"))
         return on_click
 
     def renderFolders(self):
