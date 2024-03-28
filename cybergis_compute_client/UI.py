@@ -8,6 +8,7 @@ import requests
 import datetime
 import geopandas as gpd
 import webbrowser
+import subprocess
 
 
 class UI:
@@ -133,6 +134,7 @@ class UI:
         script_exec = widgets.Output()
         with script_exec:
             display(self.scripts['output'])
+            display(self.visuals['output'])
 
         # assemble into tabs
         self.tab = widgets.Tab(children=[
@@ -174,6 +176,7 @@ class UI:
         self.renderSubmitNew()
         self.renderFolders()
         self.renderScripts()
+        self.renderVisuals()
 
     # components
     def renderAnnouncements(self):
@@ -661,21 +664,51 @@ class UI:
                         print("No files downloaded from script execution")
                         return
                     if html_files is not None:
+                        html_options = {os.path.basename(path): path for path in html_files}
                         self.scripts['html_dropdown'] = widgets.Dropdown(
-                            options=html_files, value=html_files[0],
+                            options=html_options, value=html_files[0],
                             description='Select html file to open')
+                        self.html_path = self.scripts['html_dropdown'].value
+                        self.scripts['html_dropdown'].observe(self.onHtmlDropdownChange(), names=['value'])
                         display(self.scripts['html_dropdown'])
                         self.scripts['html_button'] = widgets.Button(description="Display html in web browser")
                         self.scripts['html_button'].on_click(self.onHtmlButtonClick())
                         display(self.scripts['html_button'])
                     if script_output_files is not None:
+                        # if "None" not in script_output_files:
+                        #     script_output_files.insert(0, "None")
+                        script_options = {os.path.basename(path): path for path in script_output_files}
                         self.scripts['script_dropdown'] = widgets.Dropdown(
-                            options=script_output_files, value=script_output_files[0],
+                            options=script_options, value=script_output_files[0],
                             description='Select data file to display')
+                        # if self.vis_path is None:
+                        #     self.vis_path = self.scripts['script_dropdown'].value
+                        self.vis_path = self.scripts['script_dropdown'].value
+                        self.scripts['script_dropdown'].observe(self.onScriptDropdownChange(), names=['value'])
                         display(self.scripts['script_dropdown'])
                         self.scripts['visual_button'] = widgets.Button(description="Visualize geospatial file")
                         self.scripts['visual_button'].on_click(self.onVisualizeButtonClick())
                         display(self.scripts['visual_button'])
+    
+    def renderVisuals(self):
+        if self.visuals['output'] is None:
+            self.visuals['output'] = widgets.Output()
+        with self.visuals['output']:
+            display(Markdown('--Geospatial visualization shown here--'))
+            
+    def onHtmlDropdownChange(self):
+        def on_change(change):
+            if change['type'] == 'change':
+                self.html_path = change['new']
+        return on_change
+                        
+    def onScriptDropdownChange(self):
+        def on_change(change):
+            if change['type'] == 'change':
+                #self.vis_path = self.scripts['script_dropdown'].value
+                self.vis_path = change['new']
+                #self.rerender(['scripts'])
+        return on_change
 
     def onScriptRunButtonClick(self):
         """
@@ -751,9 +784,12 @@ class UI:
             return iframe
 
         def on_click(change):
-            with self.scripts['output']:
-                self.rerender(['scripts'])
-                geo_filepath = self.scripts['script_dropdown'].value
+            with self.visuals['output']:
+                self.rerender(['visuals'])
+                geo_filepath = self.vis_path
+                if geo_filepath is None:
+                    print("Path is none, aborting")
+                    return
                 display(Markdown("Processing file..."))
                 print("Converting to geodataframe")
                 gdf = to_geofile(geo_filepath)
@@ -764,15 +800,17 @@ class UI:
     
     def onHtmlButtonClick(self):
         def on_click(change):
-            with self.scripts['output']:
-                self.rerender(['scripts'])
-                html_path = self.scripts['html_dropdown'].value
-                if os.name == 'nt': # Windows
-                    file_path = 'file:///' + os.path.abspath(html_path)
-                else: # MacOS or Linux
-                    file_path = 'file://' + os.path.abspath(html_path)
-                # Open file in the default web browser
-                webbrowser.open_new_tab(file_path)
+            with self.visuals['output']:
+                self.rerender(['visuals'])
+                html_path = self.html_path
+                with open(html_path, 'r') as f:
+                    map_html = f.read()
+                iframe = widgets.HTML(
+                    value=map_html,
+                    placeholder='Loading map...',
+                    description='Map:',
+                )
+                display(iframe)
         return on_click
 
     def renderFolders(self):
@@ -1135,6 +1173,7 @@ class UI:
         self.resultEvents = {'output': None}
         self.resultLogs = {'output': None}
         self.scripts = {'output': None, 'script_raw': None, 'script_destination': None}
+        self.visuals = {'output': None}
         self.download = {'output': None, 'alert_output': None, 'result_output': None}
         self.recently_submitted = {'output': None, 'submit': {}, 'job_list_size': 5, 'load_more': None}
         self.load_more = {'output': None, 'load_more': None}
@@ -1146,6 +1185,7 @@ class UI:
         self.job = self.jobs[self.jobName]
         self.hpcName = self.job['default_hpc']
         self.hpc = self.hpcs[self.hpcName]
+        # self.vis_path = None
 
     def rerender(self, components=[]):
         """
