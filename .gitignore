@@ -2,15 +2,14 @@
 docs/_build/**
 .vscode/**
 cybergis_compute_user.json
-core.2435
-core.2406
-core.1842
+core.*
 *.shx
 *.shp
 *.dbf
 *.cpg
 *.html
 *.prj
+*.geojson
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

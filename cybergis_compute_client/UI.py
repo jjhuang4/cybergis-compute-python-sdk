@@ -526,7 +526,10 @@ class UI:
             return
 
         with self.resultStatus['output']:
-            display(Markdown('# ✌️ Your Job is Here!'))
+            if not self.jobFinished:
+                display(Markdown('# 🕝 Your Job is Running!'))
+            else:
+                display(Markdown('# ✌️ Your Job is Finished!'))
             self.compute.job.status()
         return
 
@@ -573,7 +576,7 @@ class UI:
             display(Markdown('***'))
             display(Markdown('## ✅ your job completed'))
             self.jobFinished = True
-            self.rerender(['download'])
+            self.rerender(['download', 'resultStatus'])
         with self.submitNew['output']:
             self.rerender(['submitNew'])
         with self.autoDownload['output']:
