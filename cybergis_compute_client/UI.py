@@ -2,13 +2,11 @@ import os
 import math
 import ipywidgets as widgets
 from ipyfilechooser import FileChooser
-from IPython.display import Markdown, display, clear_output, HTML
+from IPython.display import Markdown, display, clear_output
 from .MarkdownTable import MarkdownTable  # noqa
 import requests
 import datetime
 import geopandas as gpd
-import webbrowser
-import subprocess
 
 
 class UI:
@@ -134,7 +132,7 @@ class UI:
         script_exec = widgets.Output()
         with script_exec:
             display(self.scripts['output'])
-            
+
         # 7. visualization post run
         visualize = widgets.Output()
         with visualize:
@@ -708,7 +706,7 @@ class UI:
                     self.visuals['visual_button'] = widgets.Button(description="Visualize geospatial file")
                     self.visuals['visual_button'].on_click(self.onVisualizeButtonClick())
                     display(self.visuals['visual_button'])
-                    
+
     def renderIframes(self):
         if self.iframes['output'] is None:
             self.iframes['output'] = widgets.Output()
@@ -720,13 +718,11 @@ class UI:
             if change['type'] == 'change':
                 self.html_path = change['new']
         return on_change
-                        
+
     def onScriptDropdownChange(self):
         def on_change(change):
             if change['type'] == 'change':
-                #self.vis_path = self.scripts['script_dropdown'].value
                 self.vis_path = change['new']
-                #self.rerender(['scripts'])
         return on_change
 
     def onScriptRunButtonClick(self):
@@ -817,7 +813,7 @@ class UI:
                 iframe = geo_vis(gdf)
                 display(iframe)
         return on_click
-    
+
     def onHtmlButtonClick(self):
         def on_click(change):
             with self.iframes['output']:
