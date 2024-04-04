@@ -134,7 +134,12 @@ class UI:
         script_exec = widgets.Output()
         with script_exec:
             display(self.scripts['output'])
+            
+        # 7. visualization post run
+        visualize = widgets.Output()
+        with visualize:
             display(self.visuals['output'])
+            display(self.iframes['output'])
 
         # assemble into tabs
         self.tab = widgets.Tab(children=[
@@ -143,7 +148,8 @@ class UI:
             download,
             job_refresh,
             user_folders,
-            script_exec
+            script_exec,
+            visualize
         ])
         self.tab.set_title(0, 'Job Configuration')
         self.tab.set_title(1, 'Your Job Status')
@@ -151,6 +157,7 @@ class UI:
         self.tab.set_title(3, 'Your Jobs')
         self.tab.set_title(4, 'Past Results')
         self.tab.set_title(5, 'Post Run Scripts')
+        self.tab.set_title(6, 'Visualize Files')
         display(self.tab)
 
     def renderComponents(self):
@@ -177,6 +184,7 @@ class UI:
         self.renderFolders()
         self.renderScripts()
         self.renderVisuals()
+        self.renderIframes()
 
     # components
     def renderAnnouncements(self):
@@ -658,44 +666,55 @@ class UI:
                     self.scripts['script_destination'] = dest
                     self.scripts['button'].on_click(self.onScriptRunButtonClick())
                     display(self.scripts['button'])
-                if self.script_executed:  # if post job script was recently executed:
-                    script_output_files, html_files = self.search()
-                    if script_output_files is None and html_files is None:
-                        print("No files downloaded from script execution")
-                        return
-                    if html_files is not None:
-                        html_options = {os.path.basename(path): path for path in html_files}
-                        self.scripts['html_dropdown'] = widgets.Dropdown(
-                            options=html_options, value=html_files[0],
-                            description='Select html file to open')
-                        self.html_path = self.scripts['html_dropdown'].value
-                        self.scripts['html_dropdown'].observe(self.onHtmlDropdownChange(), names=['value'])
-                        display(self.scripts['html_dropdown'])
-                        self.scripts['html_button'] = widgets.Button(description="Display html in web browser")
-                        self.scripts['html_button'].on_click(self.onHtmlButtonClick())
-                        display(self.scripts['html_button'])
-                    if script_output_files is not None:
-                        # if "None" not in script_output_files:
-                        #     script_output_files.insert(0, "None")
-                        script_options = {os.path.basename(path): path for path in script_output_files}
-                        self.scripts['script_dropdown'] = widgets.Dropdown(
-                            options=script_options, value=script_output_files[0],
-                            description='Select data file to display')
-                        # if self.vis_path is None:
-                        #     self.vis_path = self.scripts['script_dropdown'].value
-                        self.vis_path = self.scripts['script_dropdown'].value
-                        self.scripts['script_dropdown'].observe(self.onScriptDropdownChange(), names=['value'])
-                        display(self.scripts['script_dropdown'])
-                        self.scripts['visual_button'] = widgets.Button(description="Visualize geospatial file")
-                        self.scripts['visual_button'].on_click(self.onVisualizeButtonClick())
-                        display(self.scripts['visual_button'])
-    
+                if self.script_executed:
+                    display(Markdown('### ✅ your latest run script finished executing'))
+                    print('Check the "Visualize Files" tab to visualize any generated files')
+
     def renderVisuals(self):
         if self.visuals['output'] is None:
             self.visuals['output'] = widgets.Output()
         with self.visuals['output']:
-            display(Markdown('--Geospatial visualization shown here--'))
-            
+            if self.script_executed is False:
+                display(Markdown('# ⏳ No scripts executed yet / no recent job files found...'))
+            else:  # if post job script was recently executed:
+                display(Markdown('--Geospatial files to visualize: --'))
+                script_output_files, html_files = self.search()
+                if script_output_files is None and html_files is None:
+                    print("No files downloaded from script execution")
+                    return
+                if html_files is not None:
+                    html_options = {os.path.basename(path): path for path in html_files}
+                    self.visuals['html_dropdown'] = widgets.Dropdown(
+                        options=html_options, value=html_files[0],
+                        description='Select html file to open')
+                    self.html_path = self.visuals['html_dropdown'].value
+                    self.visuals['html_dropdown'].observe(self.onHtmlDropdownChange(), names=['value'])
+                    display(self.visuals['html_dropdown'])
+                    self.visuals['html_button'] = widgets.Button(description="Display html in web browser")
+                    self.visuals['html_button'].on_click(self.onHtmlButtonClick())
+                    display(self.visuals['html_button'])
+                if script_output_files is not None:
+                    # if "None" not in script_output_files:
+                    #     script_output_files.insert(0, "None")
+                    script_options = {os.path.basename(path): path for path in script_output_files}
+                    self.visuals['script_dropdown'] = widgets.Dropdown(
+                        options=script_options, value=script_output_files[0],
+                        description='Select data file to display')
+                    # if self.vis_path is None:
+                    #     self.vis_path = self.visuals['script_dropdown'].value
+                    self.vis_path = self.visuals['script_dropdown'].value
+                    self.visuals['script_dropdown'].observe(self.onScriptDropdownChange(), names=['value'])
+                    display(self.visuals['script_dropdown'])
+                    self.visuals['visual_button'] = widgets.Button(description="Visualize geospatial file")
+                    self.visuals['visual_button'].on_click(self.onVisualizeButtonClick())
+                    display(self.visuals['visual_button'])
+                    
+    def renderIframes(self):
+        if self.iframes['output'] is None:
+            self.iframes['output'] = widgets.Output()
+        with self.iframes['output']:
+            display(Markdown(' '))
+
     def onHtmlDropdownChange(self):
         def on_change(change):
             if change['type'] == 'change':
@@ -751,6 +770,7 @@ class UI:
             run_script(dest, value)
             show_files(dest)
             self.rerender(['scripts'])
+            self.rerender(['visuals', 'iframes'])
         return on_click
 
     def onVisualizeButtonClick(self):
@@ -784,8 +804,8 @@ class UI:
             return iframe
 
         def on_click(change):
-            with self.visuals['output']:
-                self.rerender(['visuals'])
+            with self.iframes['output']:
+                self.rerender(['iframes'])
                 geo_filepath = self.vis_path
                 if geo_filepath is None:
                     print("Path is none, aborting")
@@ -800,8 +820,8 @@ class UI:
     
     def onHtmlButtonClick(self):
         def on_click(change):
-            with self.visuals['output']:
-                self.rerender(['visuals'])
+            with self.iframes['output']:
+                self.rerender(['iframes'])
                 html_path = self.html_path
                 html_link_path = os.path.relpath(html_path)
                 html_link_path = html_link_path[1:] if html_link_path[0] == "/" else html_link_path
@@ -1170,6 +1190,7 @@ class UI:
         self.resultLogs = {'output': None}
         self.scripts = {'output': None, 'script_raw': None, 'script_destination': None}
         self.visuals = {'output': None}
+        self.iframes = {'output': None}
         self.download = {'output': None, 'alert_output': None, 'result_output': None}
         self.recently_submitted = {'output': None, 'submit': {}, 'job_list_size': 5, 'load_more': None}
         self.load_more = {'output': None, 'load_more': None}
