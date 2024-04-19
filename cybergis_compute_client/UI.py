@@ -139,23 +139,23 @@ class UI:
             display(self.visuals['output'])
             display(self.iframes['output'])
 
+        tabs = [job_config, job_status, download, job_refresh, user_folders, visualize]
+
+        if self.scripts_to_run:
+            tabs.append(script_exec)
+
         # assemble into tabs
-        self.tab = widgets.Tab(children=[
-            job_config,
-            job_status,
-            download,
-            job_refresh,
-            user_folders,
-            script_exec,
-            visualize
-        ])
+        self.tab = widgets.Tab(children=tabs)
+
         self.tab.set_title(0, 'Job Configuration')
         self.tab.set_title(1, 'Your Job Status')
         self.tab.set_title(2, 'Download Job Result')
         self.tab.set_title(3, 'Your Jobs')
         self.tab.set_title(4, 'Past Results')
-        self.tab.set_title(5, 'Post Run Scripts')
-        self.tab.set_title(6, 'Visualize Files')
+        self.tab.set_title(5, 'Visualize Files')
+        if self.scripts_to_run:
+            self.tab.set_title(6, 'Post Run Scripts')
+
         display(self.tab)
 
     def renderComponents(self):
@@ -648,15 +648,13 @@ class UI:
                 if dest is None:
                     print("!!! Cannot read in recent download path, destination now current working directory")
                     dest = os.getcwd()
+                else:
+                    print(f"Successfully read in recent download path, destination is now {os.path.abspath(dest)}")
 
-                scripts = []
-                for key, value in self.job.items():  # iterate through manifest to locate post_run_scripts
-                    if key == "post_run_scripts":
-                        if value is not None:  # if raw script url exists
-                            scripts.append(value)
-                if scripts is not None:
+                if self.scripts_to_run:
                     print("Found extra scripts to run post job execution, would you like to run?")
                     print("Raw scripts: ")
+                    scripts = self.scripts_to_run
                     for raw in scripts:
                         print(raw)
                     self.scripts['button'] = widgets.Button(description="Run script")
@@ -672,15 +670,21 @@ class UI:
         if self.visuals['output'] is None:
             self.visuals['output'] = widgets.Output()
         with self.visuals['output']:
-            if self.script_executed is False:
-                display(Markdown('# ⏳ No scripts executed yet / no recent job files found...'))
+            # if self.script_executed is False:
+            #     display(Markdown('# ⏳ No scripts executed yet / no recent job files found...'))
+            if not self.jobFinished:
+                display(Markdown('# ⏳ Waiting for job to run...'))
+                print('No scripts executed yet / no recent job files found...')
             else:  # if post job script was recently executed:
                 display(Markdown('--Geospatial files to visualize: --'))
                 script_output_files, html_files = self.search()
-                if script_output_files is None and html_files is None:
-                    print("No files downloaded from script execution")
+                # if script_output_files is None and html_files is None:
+                #     print("No files downloaded from script execution")
+                #     return
+                if not script_output_files and not html_files:
+                    print("No recent downloaded files to visualize")
                     return
-                if html_files is not None:
+                if html_files:
                     html_options = {os.path.basename(path): path for path in html_files}
                     self.visuals['html_dropdown'] = widgets.Dropdown(
                         options=html_options, value=html_files[0],
@@ -691,7 +695,7 @@ class UI:
                     self.visuals['html_button'] = widgets.Button(description="Display html in web browser")
                     self.visuals['html_button'].on_click(self.onHtmlButtonClick())
                     display(self.visuals['html_button'])
-                if script_output_files is not None:
+                if script_output_files:
                     # if "None" not in script_output_files:
                     #     script_output_files.insert(0, "None")
                     script_options = {os.path.basename(path): path for path in script_output_files}
@@ -951,6 +955,8 @@ class UI:
                 self.renderRecentlySubmittedJobs()
                 self.renderLoadMore()
 
+                self.rerender(['scripts'])
+                self.rerender(['visuals'])
         return on_click
 
     def onSubmitNewButtonClick(self):
@@ -1162,6 +1168,7 @@ class UI:
         self.jobs = self.compute.list_git(raw=True)
         self.hpcs = self.compute.list_hpc(raw=True)
         # state
+        # self.test_script_tab_state = True
         self.submitted = False
         self.jobFinished = False
         self.downloading = False
@@ -1191,6 +1198,7 @@ class UI:
         self.recently_submitted = {'output': None, 'submit': {}, 'job_list_size': 5, 'load_more': None}
         self.load_more = {'output': None, 'load_more': None}
         self.folders = {'output': None, 'button': {}}
+
         # main
         self.tab = None
         # information
@@ -1198,6 +1206,16 @@ class UI:
         self.job = self.jobs[self.jobName]
         self.hpcName = self.job['default_hpc']
         self.hpc = self.hpcs[self.hpcName]
+
+        def get_scripts_manifest():
+            scripts = []
+            for key, value in self.job.items():  # iterate through manifest to locate post_run_scripts
+                if key == "post_run_scripts":
+                    if value is not None:  # if raw script url exists
+                        scripts.append(value)
+            return scripts
+
+        self.scripts_to_run = get_scripts_manifest()
         # self.vis_path = None
 
     def rerender(self, components=[]):
