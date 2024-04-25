@@ -71,7 +71,7 @@ class UI:
         self.slurm_string_option_configs = ['partition']
         self.globus_filename = None
         self.jupyter_globus = None
-        
+
     def renderUI(self):
         # render main UI
         divider = Markdown('***')
@@ -1244,12 +1244,12 @@ class UI:
 
     # Browsing through manifest to look for runnable scripts
     def get_scripts_manifest(self):
-            scripts = []
-            for key, value in self.job.items():  # iterate through manifest to locate post_run_scripts
-                if key == "post_run_scripts":
-                    if value is not None:  # if raw script url exists
-                        scripts.append(value)
-            return scripts
+        scripts = []
+        for key, value in self.job.items():  # iterate through manifest to locate post_run_scripts
+            if key == "post_run_scripts":
+                if value is not None:  # if raw script url exists
+                    scripts.append(value)
+        return scripts
 
     """ Used to ensure that folders have names with only safe characters """
     def makeNameSafe(self, text):
