@@ -71,16 +71,10 @@ class UI:
         self.slurm_string_option_configs = ['partition']
         self.globus_filename = None
         self.jupyter_globus = None
-
-    def render(self):
-        """
-        Render main UI by initializing, rendering,
-        and displaying each component
-        """
-        self.init()
-        self.renderComponents()
-        divider = Markdown('***')
+        
+    def renderUI(self):
         # render main UI
+        divider = Markdown('***')
         # 1. job template
         job_config = widgets.Output()
         with job_config:
@@ -128,19 +122,31 @@ class UI:
         with user_folders:
             display(self.folders['output'])
 
-        # 6. extra script execution post run
-        script_exec = widgets.Output()
-        with script_exec:
-            display(self.scripts['output'])
-
-        # 7. visualization post run
+        # 6. visualization
         visualize = widgets.Output()
         with visualize:
             display(self.visuals['output'])
             display(self.iframes['output'])
 
+        # 7. extra script execution post run
+        script_exec = widgets.Output()
+        with script_exec:
+            display(self.scripts['output'])
+
+        return job_config, job_status, download, job_refresh, user_folders, visualize, script_exec
+
+    def render(self):
+        """
+        Render main UI by initializing, rendering,
+        and displaying each component
+        """
+        self.init()
+        self.renderComponents()
+
+        job_config, job_status, download, job_refresh, user_folders, visualize, script_exec = self.renderUI()
         tabs = [job_config, job_status, download, job_refresh, user_folders, visualize]
 
+        self.scripts_to_run = self.get_scripts_manifest()
         if self.scripts_to_run:
             tabs.append(script_exec)
 
@@ -1066,6 +1072,19 @@ class UI:
                     [
                         'description', 'computingResource',
                         'slurm', 'param', 'uploadData'])
+                self.scripts_to_run = self.get_scripts_manifest()
+                if not self.scripts_to_run:
+                    if len(self.tab.children) == 7:  # if no runnable scripts found
+                        self.tab.children = self.tab.children[:-1]
+                        display(self.tab)
+                if self.scripts_to_run:  # found scripts in manifest
+                    script_exec = widgets.Output()
+                    with script_exec:
+                        display(self.scripts['output'])
+                    new_children = self.tab.children + (script_exec,)
+                    self.tab.children = new_children
+                    self.tab.set_title(len(self.tab.children) - 1, 'Post Run Scripts')
+                    display(self.tab)
         return on_change
 
     def onComputingResourceDropdownChange(self):
@@ -1206,16 +1225,7 @@ class UI:
         self.job = self.jobs[self.jobName]
         self.hpcName = self.job['default_hpc']
         self.hpc = self.hpcs[self.hpcName]
-
-        def get_scripts_manifest():
-            scripts = []
-            for key, value in self.job.items():  # iterate through manifest to locate post_run_scripts
-                if key == "post_run_scripts":
-                    if value is not None:  # if raw script url exists
-                        scripts.append(value)
-            return scripts
-
-        self.scripts_to_run = get_scripts_manifest()
+        self.scripts_to_run = self.get_scripts_manifest()
         # self.vis_path = None
 
     def rerender(self, components=[]):
@@ -1231,6 +1241,15 @@ class UI:
             cl[0] = cl[0].upper()
             ct = ''.join(cl)
             getattr(self, 'render' + ct)()
+
+    # Browsing through manifest to look for runnable scripts
+    def get_scripts_manifest(self):
+            scripts = []
+            for key, value in self.job.items():  # iterate through manifest to locate post_run_scripts
+                if key == "post_run_scripts":
+                    if value is not None:  # if raw script url exists
+                        scripts.append(value)
+            return scripts
 
     """ Used to ensure that folders have names with only safe characters """
     def makeNameSafe(self, text):
