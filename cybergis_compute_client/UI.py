@@ -623,7 +623,7 @@ class UI:
         """
         def search_files(d=os.getcwd()):
             data_files = []
-            print(f"Searching for data files in: {d}")
+            # print(f"Searching for data files in: {d}")
             # get all files that can be viewed and operated on as dataframes
             data_files = search_dir(d, data_files, ['.csv', '.shp', '.geojson'])
             if not data_files:
@@ -634,7 +634,7 @@ class UI:
         """
         def search_html(d=os.getcwd()):
             html_files = []
-            print(f"Searching for html files in: {d}")
+            # print(f"Searching for html files in: {d}")
             html_files = search_dir(d, html_files, ['.html'])
             if not html_files:
                 display(Markdown(' No recently created html files to view'))
@@ -649,17 +649,19 @@ class UI:
             if self.jobFinished is False:
                 display(Markdown('# ⏳ Waiting for Job to Finish...'))
             else:
-                display(Markdown(" Checking job manifest for additional scripts... "))
+                display(Markdown('# ✍ You have scripts to run!'))
+                # display(Markdown(" Checking job manifest for additional scripts... "))
                 dest = self.compute.recentDownloadPath  # if recently downloaded, make destination recent download folder
                 if dest is None:
-                    print("!!! Cannot read in recent download path, destination now current working directory")
+                    display(Markdown("❗ Cannot read in recent download path, destination now current working directory"))
                     dest = os.getcwd()
                 else:
-                    print(f"Successfully read in recent download path, destination is now {os.path.abspath(dest)}")
+                    display(Markdown(f"Successfully read in recent download path, destination is now {os.path.abspath(dest)}"))
+                    display(Markdown("❗If you've previously downloaded files from a script run, you may need to run the script again"))
 
                 if self.scripts_to_run:
-                    print("Found extra scripts to run post job execution, would you like to run?")
-                    print("Raw scripts: ")
+                    display(Markdown("We've found some additional script(s) in the job manifest, would you like to run?"))
+                    display(Markdown("You can view the raw script file here: "))
                     scripts = self.scripts_to_run
                     for raw in scripts:
                         print(raw)
@@ -679,10 +681,11 @@ class UI:
             # if self.script_executed is False:
             #     display(Markdown('# ⏳ No scripts executed yet / no recent job files found...'))
             if not self.jobFinished:
-                display(Markdown('# ⏳ Waiting for job to run...'))
+                display(Markdown('# ⏳ Waiting for Files...'))
                 print('No scripts executed yet / no recent job files found...')
             else:  # if post job script was recently executed:
-                display(Markdown('--Geospatial files to visualize: --'))
+                # display(Markdown('--Geospatial files to visualize: --'))
+                display(Markdown('# 🙌 You have data to visualize!'))
                 script_output_files, html_files = self.search()
                 # if script_output_files is None and html_files is None:
                 #     print("No files downloaded from script execution")
@@ -831,8 +834,8 @@ class UI:
                 html_path = self.html_path
                 html_link_path = os.path.relpath(html_path)
                 html_link_path = html_link_path[1:] if html_link_path[0] == "/" else html_link_path
-                print(html_link_path)
-                display(Markdown(f"[Click me]({html_link_path})"))
+                print(f"Click to open {html_link_path} in a new tab")
+                display(Markdown(f"[Open HTML]({html_link_path})"))
         return on_click
 
     def renderFolders(self):
