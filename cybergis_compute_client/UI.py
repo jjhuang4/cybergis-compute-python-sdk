@@ -72,9 +72,17 @@ class UI:
         self.globus_filename = None
         self.jupyter_globus = None
 
-    def renderUI(self):
+    def render(self):
+        """
+        Render main UI by initializing, rendering,
+        and displaying each component
+        """
+        self.init()
+        self.renderComponents()
+
         # render main UI
         divider = Markdown('***')
+
         # 1. job template
         job_config = widgets.Output()
         with job_config:
@@ -133,17 +141,6 @@ class UI:
         with script_exec:
             display(self.scripts['output'])
 
-        return job_config, job_status, download, job_refresh, user_folders, visualize, script_exec
-
-    def render(self):
-        """
-        Render main UI by initializing, rendering,
-        and displaying each component
-        """
-        self.init()
-        self.renderComponents()
-
-        job_config, job_status, download, job_refresh, user_folders, visualize, script_exec = self.renderUI()
         tabs = [job_config, job_status, download, job_refresh, user_folders, visualize]
 
         self.scripts_to_run = self.get_scripts_manifest()
@@ -152,7 +149,6 @@ class UI:
 
         # assemble into tabs
         self.tab = widgets.Tab(children=tabs)
-
         self.tab.set_title(0, 'Job Configuration')
         self.tab.set_title(1, 'Your Job Status')
         self.tab.set_title(2, 'Download Job Result')
