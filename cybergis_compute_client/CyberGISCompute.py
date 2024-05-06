@@ -18,6 +18,12 @@ import getpass
 from IPython.display import display, Markdown, Javascript
 
 
+class ParamAccumulator:
+    def __init__(self,
+                 params={}):
+        self.params = params
+
+
 class CyberGISCompute:
     """CyberGISCompute class
     An inteface that handles all interactions with the HPC backend
@@ -69,6 +75,7 @@ class CyberGISCompute:
         # job
         self.job = None
         self.recentDownloadPath = None
+        self.simple = False
 
     def encrypt_token(self, token):
         """
@@ -214,6 +221,25 @@ class CyberGISCompute:
         """
         self.login()
         return Job(maintainer=maintainer, hpc=hpc, id=None, hpcUsername=hpcUsername, hpcPassword=hpcPassword, client=self.client, isJupyter=self.isJupyter, jupyterhubApiToken=self.jupyterhubApiToken, printJob=verbose)
+
+    def run_job_using_params(self,
+                             input_params=[],
+                             maintainer='community_contribution',
+                             hpc="keeling_community",
+                             hpcUsername=None,
+                             hpcPassword=None,
+                             localExecutableFolder={"type": "git",
+                                                    "gitId": "hello_world"},
+                             localDataFolder=None,
+                             localResultFolder=None,
+                             env=None,
+                             slurm=None,
+                             verbose=True):
+        for params in input_params:
+            param_acc = ParamAccumulator(params)
+            job = self.create_job(maintainer, hpc, hpcUsername, hpcPassword)
+            job.set(localExecutableFolder, localDataFolder, localResultFolder, param_acc.params, env, slurm)
+            job.submit()
 
     def get_job_by_id(self, id=None, verbose=True):
         """
@@ -535,7 +561,7 @@ class CyberGISCompute:
         """
         self.show_ui(input_params, defaultJob, defaultDataFolder, defaultRemoteResultFolder)
 
-    def show_ui(self, input_params=None, defaultJob="hello_world", defaultDataFolder="./", defaultRemoteResultFolder=None, jupyterhubApiToken=None):
+    def show_ui(self, simple=False, input_params=None, defaultJob="hello_world", defaultDataFolder="./", defaultRemoteResultFolder=None, jupyterhubApiToken=None):
         """
         Displays the job submission UI
 
@@ -547,6 +573,7 @@ class CyberGISCompute:
         Returns:
             None
         """
+        self.simple = simple
         if (jupyterhubApiToken is not None):
             self.jupyterhubApiToken = jupyterhubApiToken
         self.ui.defaultJobName = defaultJob
