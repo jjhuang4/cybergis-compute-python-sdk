@@ -221,7 +221,6 @@ class Job:
 
             if not isEnd:
                 time.sleep(refreshRateInSeconds)
-                
 
     def status(self, raw=False):
         """
