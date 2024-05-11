@@ -583,6 +583,7 @@ class UI:
                 display(Markdown('## ❌ job failed'))
                 print("Failed to run job, check job event messages to troubleshoot")
                 self.jobFinished = False
+                return
             self.compute.job.logs()
             self.tab.set_title(2, '✅ Download Job Result')
             display(Markdown('***'))
