@@ -614,10 +614,10 @@ class UI:
         Automatically downloading results
         once a job is finished
         """
-        if self.compute.simple is False:
-            return
         if self.autoDownload['output'] is None:
             self.autoDownload['output'] = widgets.Output()
+        if self.compute.simple is False:
+            return
         if self.jobFinished:
             result_folder_content = self.compute.job.result_folder_content()
             # push default value to front
