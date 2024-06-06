@@ -7,6 +7,7 @@ from .MarkdownTable import MarkdownTable  # noqa
 import requests
 import datetime
 import geopandas as gpd
+import uuid
 
 
 class UI:
@@ -647,6 +648,9 @@ class UI:
             self.renderRecentlySubmittedJobs()
             self.renderLoadMore()
 
+            with self.autoDownload['output']:
+                self.rerender(['scripts'])
+                self.rerender(['visuals'])
         return
 
     def search(self):  # function for searching from directory that post job-run scripts recently outputted to
@@ -676,8 +680,6 @@ class UI:
             # print(f"Searching for data files in: {d}")
             # get all files that can be viewed and operated on as dataframes
             data_files = search_dir(d, data_files, ['.csv', '.shp', '.geojson'])
-            if not data_files:
-                display(Markdown(' No recently created compatible filetypes to view'))
             return data_files
         """
         Helper function to search for output html files
@@ -686,8 +688,6 @@ class UI:
             html_files = []
             # print(f"Searching for html files in: {d}")
             html_files = search_dir(d, html_files, ['.html'])
-            if not html_files:
-                display(Markdown(' No recently created html files to view'))
             return html_files
         dest = self.scripts['script_destination']
         return search_files(dest), search_html(dest)
@@ -737,6 +737,8 @@ class UI:
                 # display(Markdown('--Geospatial files to visualize: --'))
                 display(Markdown('# 🙌 You have data to visualize!'))
                 script_output_files, html_files = self.search()
+                if not script_output_files and not html_files:
+                    display(Markdown(' No recently created compatible filetypes to view'))
                 # if script_output_files is None and html_files is None:
                 #     print("No files downloaded from script execution")
                 #     return
@@ -745,6 +747,7 @@ class UI:
                     return
                 if html_files:
                     html_options = {os.path.basename(path): path for path in html_files}
+                    print(html_options)
                     self.visuals['html_dropdown'] = widgets.Dropdown(
                         options=html_options, value=html_files[0],
                         description='Select html file to open')
@@ -853,7 +856,7 @@ class UI:
         """
         def geo_vis(gdf):
             map = gdf.explore(tiles='OpenStreetMap')
-            map.save("map_visualization2.html")
+            map.save(f"map_visualization_{uuid.uuid4()}.html")
             map_html = map._repr_html_()  # convert explore() map to html string
             iframe = widgets.HTML(
                 value=map_html,
@@ -879,13 +882,20 @@ class UI:
 
     def onHtmlButtonClick(self):
         def on_click(change):
+            # note that html_path is sourced from html paths from self.search(), which searches through recent download path if it exists
             with self.iframes['output']:
+                # if (self.scripts['script_destination'] is not None:
+                #     html_path = self.scripts['script_destination']
                 self.rerender(['iframes'])
                 html_path = self.html_path
+                print(f"HTML path: {html_path}")
                 html_link_path = os.path.relpath(html_path)
                 html_link_path = html_link_path[1:] if html_link_path[0] == "/" else html_link_path
-                print(f"Click to open {html_link_path} in a new tab")
+                folder_name = os.path.basename(self.compute.recentDownloadPath)
+                html_link_path = os.path.join("..", folder_name, html_link_path)
+                print(f"Click to open {html_link_path} in a new tab")  # ERROR: html_link_path is the rel_path, not the recent download folder path, which means you will only be able to visualize from the current working directory and not the recent download path
                 display(Markdown(f"[Open HTML]({html_link_path})"))
+                print(html_link_path)
         return on_click
 
     def renderFolders(self):
