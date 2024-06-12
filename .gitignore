@@ -10,6 +10,7 @@ core.*
 *.html
 *.prj
 *.geojson
+hello_world.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
